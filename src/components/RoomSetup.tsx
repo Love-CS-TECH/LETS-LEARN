@@ -28,10 +28,11 @@ export default function RoomSetup({ onRoomJoined }: RoomSetupProps) {
 
     setIsCreating(true);
     try {
-      const room = await gameSocket.createRoom(playerName.trim());
+      const room = gameSocket.createRoom(playerName.trim());
       setCreatedRoom(room);
-      toast.success('Room created successfully!');
+      toast.success(`Room created! Code: ${room.id}`);
     } catch (error) {
+      console.error('Create room error:', error);
       toast.error('Failed to create room');
     } finally {
       setIsCreating(false);
@@ -50,11 +51,19 @@ export default function RoomSetup({ onRoomJoined }: RoomSetupProps) {
 
     setIsJoining(true);
     try {
-      const room = await gameSocket.joinRoom(roomCode.trim().toUpperCase(), playerName.trim());
+      console.log(`Joining room ${roomCode.trim().toUpperCase()} as ${playerName.trim()}`);
+      const room = gameSocket.joinRoom(roomCode.trim().toUpperCase(), playerName.trim());
+      
+      if (!room) {
+        throw new Error(`Room ${roomCode.trim().toUpperCase()} not found. Please check the room code.`);
+      }
+      
+      console.log('Successfully joined room:', room);
       onRoomJoined(room, playerName.trim());
       toast.success('Joined room successfully!');
     } catch (error) {
-      toast.error('Failed to join room. Check the room code.');
+      console.error('Join room error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to join room. Check the room code.');
     } finally {
       setIsJoining(false);
     }
@@ -62,13 +71,14 @@ export default function RoomSetup({ onRoomJoined }: RoomSetupProps) {
 
   const joinCreatedRoom = () => {
     if (createdRoom) {
+      console.log('Joining created room:', createdRoom);
       onRoomJoined(createdRoom, playerName);
     }
   };
 
   const copyRoomCode = async () => {
     if (createdRoom) {
-      await navigator.clipboard.writeText(createdRoom.code);
+      await navigator.clipboard.writeText(createdRoom.id);
       setCopiedCode(true);
       toast.success('Room code copied!');
       setTimeout(() => setCopiedCode(false), 2000);
@@ -77,7 +87,7 @@ export default function RoomSetup({ onRoomJoined }: RoomSetupProps) {
 
   const copyRoomLink = async () => {
     if (createdRoom) {
-      const link = `${window.location.origin}?room=${createdRoom.code}`;
+      const link = `${window.location.origin}?room=${createdRoom.id}`;
       await navigator.clipboard.writeText(link);
       setCopiedLink(true);
       toast.success('Room link copied!');
@@ -114,7 +124,7 @@ export default function RoomSetup({ onRoomJoined }: RoomSetupProps) {
                 <h3 className="font-bold text-green-800 mb-2">Room Created!</h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between bg-white p-3 rounded border">
-                    <span className="font-mono text-lg text-gray-800">{createdRoom.code}</span>
+                    <span className="font-mono text-lg text-gray-800">{createdRoom.id}</span>
                     <Button
                       variant="outline"
                       size="sm"
